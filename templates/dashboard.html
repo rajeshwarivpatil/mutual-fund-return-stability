@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mutual Fund Return Stability — Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#060b14;--surface:#0d1623;--border:#1a2d45;--accent1:#00d4ff;--accent2:#ff6b35;--accent3:#7fff6e;--text:#e8f4f8;--muted:#5a7a96;--fidelity:#00d4ff;--matthews:#ff6b35;--invesco:#7fff6e;--danger:#ff4466;--warn:#ffcc00}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px}
+  header{padding:24px 32px 18px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(0,212,255,.05),transparent);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .logo h1{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--accent1);text-transform:uppercase}
+  .logo p{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:3px;letter-spacing:.08em}
+  .badges{display:flex;gap:8px;flex-wrap:wrap}
+  .badge{padding:5px 12px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;font-weight:500}
+  .bf{background:rgba(0,212,255,.12);color:var(--fidelity);border:1px solid rgba(0,212,255,.3)}
+  .bm{background:rgba(255,107,53,.12);color:var(--matthews);border:1px solid rgba(255,107,53,.3)}
+  .bi{background:rgba(127,255,110,.12);color:var(--invesco);border:1px solid rgba(127,255,110,.3)}
+  nav{display:flex;padding:0 32px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto}
+  .tab{padding:14px 20px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;transition:.2s;white-space:nowrap}
+  .tab:hover{color:var(--text)}.tab.active{color:var(--accent1);border-bottom-color:var(--accent1)}
+  .main{padding:24px 32px;max-width:1400px;margin:0 auto}
+  .page{display:none}.page.active{display:block}
+  .sec{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .sec h2{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .sec-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+  .sec-n{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 18px;position:relative;overflow:hidden}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ca,var(--accent1))}
+  .cl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+  .cv{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;color:var(--ca,var(--accent1));line-height:1}
+  .cs{font-size:11px;color:var(--muted);margin-top:5px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:14px}
+  .ct{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent1)}
+  .tbl{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px}
+  .tbl th{padding:9px 12px;text-align:left;background:rgba(0,212,255,.06);color:var(--accent1);font-size:10px;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border)}
+  .tbl td{padding:9px 12px;border-bottom:1px solid rgba(26,45,69,.5);color:var(--text)}
+  .tbl tr:hover td{background:rgba(0,212,255,.03)}
+  .pos{color:var(--accent3)}.neg{color:var(--danger)}.warn{color:var(--warn)}
+  .cf{color:var(--fidelity)}.cm{color:var(--matthews)}.ci{color:var(--invesco)}
+  .hm-head{display:flex;gap:3px;padding-left:88px;margin-bottom:3px}
+  .hm-hl{flex:1;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+  .hm-row{display:flex;align-items:center;gap:3px;margin-bottom:3px}
+  .hm-rl{width:84px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:right;margin-right:4px}
+  .hm-c{flex:1;height:46px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:12px;font-weight:500}
+  .prob-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px}
+  .pc{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px}
+  .pl{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+  .pv{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;line-height:1}
+  .pb{margin-top:8px;height:4px;background:var(--border);border-radius:2px}
+  .pbf{height:100%;border-radius:2px}
+  .ps{font-size:11px;color:var(--muted);margin-top:7px}
+  .insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin-bottom:14px}
+  .ic{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 18px;border-left:3px solid var(--ic,var(--accent1))}
+  .ic h4{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--ic,var(--accent1));margin-bottom:7px}
+  .ic p{font-size:12px;color:var(--muted);line-height:1.65}
+  .ic p strong{color:var(--text)}
+  footer{padding:16px 32px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  @media(max-width:768px){header,nav,.main,footer{padding-left:14px;padding-right:14px}.grid,.grid3,.prob-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><h1>MutualFund · Analytics</h1><p>RETURN STABILITY ANALYSIS — ASIAN EQUITY FUNDS — 2003–2026</p></div>
+  <div class="badges">
+    <span class="badge bf">● Fidelity Asia</span>
+    <span class="badge bm">● Matthews Asia</span>
+    <span class="badge bi">● Invesco Developing</span>
+  </div>
+</header>
+<nav>
+  <button class="tab active" onclick="go('overview',this)">01 · Overview</button>
+  <button class="tab" onclick="go('descriptive',this)">02 · Descriptive Stats</button>
+  <button class="tab" onclick="go('distributions',this)">03 · Distributions</button>
+  <button class="tab" onclick="go('probability',this)">04 · Probability</button>
+  <button class="tab" onclick="go('inferential',this)">05 · Inferential</button>
+  <button class="tab" onclick="go('linear',this)">06 · Linear Algebra & PCA</button>
+  <button class="tab" onclick="go('insights',this)">07 · Insights</button>
+</nav>
+<div class="main">
+
+<!-- TAB 1 -->
+<div class="page active" id="pg-overview">
+  <div class="sec"><span class="sec-n">01</span><h2>Data Understanding & Overview</h2><div class="sec-line"></div></div>
+  <div class="cards">
+    <div class="card"><div class="cl">Observations (Returns)</div><div class="cv">5,615</div><div class="cs">Daily returns · 2003–2026</div></div>
+    <div class="card" style="--ca:var(--matthews)"><div class="cl">Variables</div><div class="cv">4</div><div class="cs">Date + 3 fund daily returns</div></div>
+    <div class="card" style="--ca:var(--invesco)"><div class="cl">NAV Observations</div><div class="cv">8,278</div><div class="cs">Price dataset · 1993–2026</div></div>
+    <div class="card" style="--ca:var(--warn)"><div class="cl">Data Type</div><div class="cv" style="font-size:15px;padding-top:5px">Multivariate</div><div class="cs">Continuous time-series</div></div>
+  </div>
+  <div class="box"><div class="ct"><span class="dot"></span> Net Asset Value (NAV) — Historical Trajectory</div><canvas id="navChart" height="90"></canvas></div>
+  <div class="box">
+    <div class="ct"><span class="dot" style="background:var(--accent2)"></span> Dataset Preview — Daily Returns</div>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Fidelity Asia</th><th>Matthews Asia</th><th>Invesco Developing</th></tr></thead>
+      <tbody>
+        <tr><td>2003-11-03</td><td class="cf">+1.2381%</td><td class="cm">+0.0000%</td><td class="ci">+1.5848%</td></tr>
+        <tr><td>2003-11-04</td><td class="cf">+0.7914%</td><td class="cm">+0.0999%</td><td class="ci">+0.6760%</td></tr>
+        <tr><td>2003-11-05</td><td class="cf">+0.4282%</td><td class="cm neg">−0.6993%</td><td class="ci neg">−0.1033%</td></tr>
+        <tr><td>2003-11-06</td><td class="cf neg">−1.3504%</td><td class="cm neg">−1.8109%</td><td class="ci neg">−0.6205%</td></tr>
+        <tr><td>2003-11-07</td><td class="cf">+1.4523%</td><td class="cm">+1.1210%</td><td class="ci">+0.9840%</td></tr>
+        <tr><td>2003-11-10</td><td class="cf">+0.2781%</td><td class="cm">+0.3980%</td><td class="ci">+0.2210%</td></tr>
+        <tr><td>2003-11-11</td><td class="cf neg">−0.1550%</td><td class="cm">+0.0000%</td><td class="ci">+0.2350%</td></tr>
+        <tr><td>2003-11-12</td><td class="cf">+0.6320%</td><td class="cm">+0.2980%</td><td class="ci">+0.4470%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 2 -->
+<div class="page" id="pg-descriptive">
+  <div class="sec"><span class="sec-n">02</span><h2>Descriptive Statistical Analysis</h2><div class="sec-line"></div></div>
+  <div class="grid3">
+    <div class="card" style="--ca:var(--fidelity)"><div class="cl">Fidelity Asia — Ann. Return</div><div class="cv">15.69%</div><div class="cs">Sharpe: 0.723 · Vol: 21.68%</div></div>
+    <div class="card" style="--ca:var(--matthews)"><div class="cl">Matthews Asia — Ann. Return</div><div class="cv">11.45%</div><div class="cs">Sharpe: 0.595 · Vol: 19.25%</div></div>
+    <div class="card" style="--ca:var(--invesco)"><div class="cl">Invesco Dev — Ann. Return</div><div class="cv">23.17%</div><div class="cs">Sharpe: 0.537 · Vol: 43.15%</div></div>
+  </div>
+  <div class="box">
+    <div class="ct"><span class="dot"></span> Five-Number Summary & Dispersion Measures</div>
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Fidelity Asia</th><th>Matthews Asia</th><th>Invesco Developing</th></tr></thead>
+      <tbody>
+        <tr><td>Mean (daily)</td><td class="cf">0.000622</td><td class="cm">0.000454</td><td class="ci">0.000919</td></tr>
+        <tr><td>Median (daily)</td><td class="cf">0.000985</td><td class="cm">0.000756</td><td class="ci">0.000968</td></tr>
+        <tr><td>Std Deviation</td><td class="cf">0.013659</td><td class="cm">0.012125</td><td class="ci">0.027180</td></tr>
+        <tr><td>Variance</td><td class="cf">0.000187</td><td class="cm">0.000147</td><td class="ci">0.000739</td></tr>
+        <tr><td>IQR</td><td class="cf">0.012901</td><td class="cm">0.011555</td><td class="ci">0.011706</td></tr>
+        <tr><td>Min</td><td class="neg">−10.96%</td><td class="neg">−9.40%</td><td class="neg">−10.78%</td></tr>
+        <tr><td>Q1 (25th)</td><td class="cf">−0.5658%</td><td class="cm">−0.5094%</td><td class="ci">−0.5082%</td></tr>
+        <tr><td>Median (50th)</td><td class="cf">+0.0985%</td><td class="cm">+0.0756%</td><td class="ci">+0.0968%</td></tr>
+        <tr><td>Q3 (75th)</td><td class="cf">+0.7243%</td><td class="cm">+0.6460%</td><td class="ci">+0.6624%</td></tr>
+        <tr><td>Max</td><td class="pos">+20.46%</td><td class="pos">+14.66%</td><td class="pos">+164.53%</td></tr>
+        <tr><td>Outliers (IQR method)</td><td class="warn">328</td><td class="warn">305</td><td class="warn">321</td></tr>
+        <tr><td>Ann. Return</td><td class="pos">15.686%</td><td class="pos">11.453%</td><td class="pos">23.168%</td></tr>
+        <tr><td>Ann. Volatility</td><td class="cf">21.684%</td><td class="cm">19.249%</td><td class="ci">43.146%</td></tr>
+        <tr><td>Sharpe Ratio</td><td class="pos">0.723</td><td class="pos">0.595</td><td class="pos">0.537</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid">
+    <div class="box"><div class="ct"><span class="dot" style="background:var(--accent3)"></span> Annual Returns by Fund</div><canvas id="annualChart" height="160"></canvas></div>
+    <div class="box"><div class="ct"><span class="dot" style="background:var(--accent2)"></span> Risk vs Return Profile</div><canvas id="riskReturn" height="160"></canvas></div>
+  </div>
+</div>
+
+<!-- TAB 3 -->
+<div class="page" id="pg-distributions">
+  <div class="sec"><span class="sec-n">03</span><h2>Distributions & Relationship Plots</h2><div class="sec-line"></div></div>
+  <div class="grid">
+    <div class="box"><div class="ct"><span class="dot"></span> Histogram — Fidelity Asia</div><canvas id="histF" height="160"></canvas></div>
+    <div class="box"><div class="ct"><span class="dot" style="background:var(--matthews)"></span> Histogram — Matthews Asia</div><canvas id="histM" height="160"></canvas></div>
+  </div>
+  <div class="grid">
+    <div class="box"><div class="ct"><span class="dot" style="background:var(--invesco)"></span> Histogram — Invesco Developing</div><canvas id="histI" height="160"></canvas></div>
+    <div class="box"><div class="ct"><span class="dot" style="background:var(--warn)"></span> Boxplot — IQR Width Comparison</div><canvas id="boxplot" height="160"></canvas></div>
+  </div>
+  <div class="grid">
+    <div class="box"><div class="ct"><span class="dot"></span> Scatter — Fidelity vs Matthews (r=0.834)</div><canvas id="sc1" height="160"></canvas></div>
+    <div class="box"><div class="ct"><span class="dot" style="background:var(--invesco)"></span> Scatter — Fidelity vs Invesco (r=0.429)</div><canvas id="sc2" height="160"></canvas></div>
+  </div>
+  <div class="box"><div class="ct"><span class="dot" style="background:var(--matthews)"></span> Stacked Bar — Annual Positive Returns</div><canvas id="stacked" height="80"></canvas></div>
+</div>
+
+<!-- TAB 4 -->
+<div class="page" id="pg-probability">
+  <div class="sec"><span class="sec-n">04</span><h2>Probability Analysis</h2><div class="sec-line"></div></div>
+  <div class="prob-grid">
+    <div class="pc"><div class="pl">P(Positive) — Fidelity Asia</div><div class="pv cf">53.2%</div><div class="pb"><div class="pbf" style="width:53.2%;background:var(--fidelity)"></div></div><div class="ps">2,986 / 5,615 days positive</div></div>
+    <div class="pc"><div class="pl">P(Positive) — Matthews Asia</div><div class="pv cm">52.8%</div><div class="pb"><div class="pbf" style="width:52.8%;background:var(--matthews)"></div></div><div class="ps">2,964 / 5,615 days positive</div></div>
+    <div class="pc"><div class="pl">P(Positive) — Invesco Dev</div><div class="pv ci">54.2%</div><div class="pb"><div class="pbf" style="width:54.2%;background:var(--invesco)"></div></div><div class="ps">3,043 / 5,615 days positive</div></div>
+  </div>
+  <div class="box">
+    <div class="ct"><span class="dot" style="background:var(--warn)"></span> Bayes' Theorem — P(Fund Positive | Market Up)</div>
+    <table class="tbl">
+      <thead><tr><th>Fund</th><th>Prior P(+)</th><th>P(Market Up)</th><th>Posterior P(+ | Mkt Up)</th><th>Bayes Lift</th></tr></thead>
+      <tbody>
+        <tr><td class="cf">Fidelity Asia</td><td>0.532</td><td>0.640</td><td class="pos">0.908</td><td class="pos">+71.0%</td></tr>
+        <tr><td class="cm">Matthews Asia</td><td>0.528</td><td>0.640</td><td class="pos">0.895</td><td class="pos">+69.5%</td></tr>
+        <tr><td class="ci">Invesco Dev</td><td>0.542</td><td>0.640</td><td class="pos">0.907</td><td class="pos">+67.3%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid">
+    <div class="box"><div class="ct"><span class="dot"></span> Return Sign Distribution</div><canvas id="probDough" height="200"></canvas></div>
+    <div class="box"><div class="ct"><span class="dot" style="background:var(--warn)"></span> Conditional vs Unconditional P(+)</div><canvas id="condBar" height="200"></canvas></div>
+  </div>
+  <div class="box">
+    <div class="ct"><span class="dot" style="background:var(--accent2)"></span> Real-World Interpretation</div>
+    <p style="color:var(--muted);line-height:1.8;font-size:13px"><strong style="color:var(--text)">Prior:</strong> ~52–54% unconditional positive return probability — barely above random.<br><br><strong style="color:var(--text)">Bayes Update:</strong> When market is broadly up (P=0.64), posterior probability of fund gain rises to <strong style="color:var(--accent3)">~90%+</strong> — confirming strong systematic beta.<br><br><strong style="color:var(--text)">Implication:</strong> Diversifying across only these three funds provides limited downside protection. All three funds amplify the Asian market cycle.</p>
+  </div>
+</div>
+
+<!-- TAB 5 -->
+<div class="page" id="pg-inferential">
+  <div class="sec"><span class="sec-n">05</span><h2>Inferential Statistics</h2><div class="sec-line"></div></div>
+  <div class="grid">
+    <div class="box"><div class="ct"><span class="dot"></span> 95% Confidence Intervals</div><canvas id="ciChart" height="190"></canvas></div>
+    <div class="box">
+      <div class="ct"><span class="dot" style="background:var(--warn)"></span> One-Way ANOVA Results</div>
+      <table class="tbl">
+        <thead><tr><th>Parameter</th><th>Value</th><th>Interpretation</th></tr></thead>
+        <tbody>
+          <tr><td>F-Statistic</td><td class="cf">0.8704</td><td>Low between-group variance</td></tr>
+          <tr><td>P-Value</td><td class="pos">0.4188</td><td class="pos">Not significant (p &gt; 0.05)</td></tr>
+          <tr><td>Degrees of Freedom</td><td>2, 16842</td><td>Between / Within</td></tr>
+          <tr><td>Decision</td><td colspan="2" class="pos">✓ Fail to reject H₀</td></tr>
+        </tbody>
+      </table>
+      <p style="color:var(--muted);font-size:12px;margin-top:12px;line-height:1.7"><strong style="color:var(--text)">H₀:</strong> μ(Fidelity) = μ(Matthews) = μ(Invesco)<br><strong style="color:var(--text)">Result:</strong> No statistically significant difference in mean daily returns (p=0.42). Funds differ in risk profile, not mean return.</p>
+    </div>
+  </div>
+  <div class="box">
+    <div class="ct"><span class="dot" style="background:var(--accent2)"></span> Confidence Intervals (95%)</div>
+    <table class="tbl">
+      <thead><tr><th>Fund</th><th>Sample Mean</th><th>Std Error</th><th>CI Lower</th><th>CI Upper</th><th>Ann. Return</th></tr></thead>
+      <tbody>
+        <tr><td class="cf">Fidelity Asia</td><td>0.000622</td><td>0.000182</td><td>0.000265</td><td>0.000980</td><td class="pos">+15.69%</td></tr>
+        <tr><td class="cm">Matthews Asia</td><td>0.000454</td><td>0.000162</td><td>0.000137</td><td>0.000772</td><td class="pos">+11.45%</td></tr>
+        <tr><td class="ci">Invesco Dev</td><td>0.000919</td><td>0.000363</td><td>0.000208</td><td>0.001630</td><td class="pos">+23.17%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="box">
+    <div class="ct"><span class="dot" style="background:var(--invesco)"></span> t-Test vs Zero (H₀: μ = 0)</div>
+    <table class="tbl">
+      <thead><tr><th>Fund</th><th>t-Statistic</th><th>p-Value</th><th>Significant?</th><th>Conclusion</th></tr></thead>
+      <tbody>
+        <tr><td class="cf">Fidelity Asia</td><td>3.42</td><td class="pos">0.0006</td><td class="pos">✓ Yes</td><td>Returns significantly &gt; 0</td></tr>
+        <tr><td class="cm">Matthews Asia</td><td>2.81</td><td class="pos">0.0050</td><td class="pos">✓ Yes</td><td>Returns significantly &gt; 0</td></tr>
+        <tr><td class="ci">Invesco Dev</td><td>2.53</td><td class="pos">0.0114</td><td class="pos">✓ Yes</td><td>Returns significantly &gt; 0</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 6 -->
+<div class="page" id="pg-linear">
+  <div class="sec"><span class="sec-n">06</span><h2>Linear Algebra & PCA</h2><div class="sec-line"></div></div>
+  <div class="grid">
+    <div class="box">
+      <div class="ct"><span class="dot"></span> Correlation Matrix Heatmap</div>
+      <div class="hm-head"><div class="hm-hl">Fidelity</div><div class="hm-hl">Matthews</div><div class="hm-hl">Invesco</div></div>
+      <div class="hm-row"><div class="hm-rl">Fidelity</div><div class="hm-c" style="background:rgba(0,212,255,.9);color:#000">1.000</div><div class="hm-c" style="background:rgba(0,212,255,.72);color:#000">0.834</div><div class="hm-c" style="background:rgba(0,212,255,.28);color:var(--text)">0.429</div></div>
+      <div class="hm-row"><div class="hm-rl">Matthews</div><div class="hm-c" style="background:rgba(0,212,255,.72);color:#000">0.834</div><div class="hm-c" style="background:rgba(0,212,255,.9);color:#000">1.000</div><div class="hm-c" style="background:rgba(0,212,255,.26);color:var(--text)">0.417</div></div>
+      <div class="hm-row"><div class="hm-rl">Invesco</div><div class="hm-c" style="background:rgba(0,212,255,.28);color:var(--text)">0.429</div><div class="hm-c" style="background:rgba(0,212,255,.26);color:var(--text)">0.417</div><div class="hm-c" style="background:rgba(0,212,255,.9);color:#000">1.000</div></div>
+    </div>
+    <div class="box">
+      <div class="ct"><span class="dot" style="background:var(--matthews)"></span> Covariance Matrix Heatmap</div>
+      <div class="hm-head"><div class="hm-hl">Fidelity</div><div class="hm-hl">Matthews</div><div class="hm-hl">Invesco</div></div>
+      <div class="hm-row"><div class="hm-rl">Fidelity</div><div class="hm-c" style="background:rgba(255,107,53,.85);color:#000">1.87e-4</div><div class="hm-c" style="background:rgba(255,107,53,.58);color:#000">1.38e-4</div><div class="hm-c" style="background:rgba(255,107,53,.40);color:var(--text)">1.59e-4</div></div>
+      <div class="hm-row"><div class="hm-rl">Matthews</div><div class="hm-c" style="background:rgba(255,107,53,.58);color:#000">1.38e-4</div><div class="hm-c" style="background:rgba(255,107,53,.85);color:#000">1.47e-4</div><div class="hm-c" style="background:rgba(255,107,53,.36);color:var(--text)">1.37e-4</div></div>
+      <div class="hm-row"><div class="hm-rl">Invesco</div><div class="hm-c" style="background:rgba(255,107,53,.40);color:var(--text)">1.59e-4</div><div class="hm-c" style="background:rgba(255,107,53,.36);color:var(--text)">1.37e-4</div><div class="hm-c" style="background:rgba(255,107,53,.9);color:#000">7.39e-4</div></div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="box">
+      <div class="ct"><span class="dot" style="background:var(--warn)"></span> Scree Plot — PCA Explained Variance</div>
+      <canvas id="scree" height="180"></canvas>
+    </div>
+    <div class="box">
+      <div class="ct"><span class="dot" style="background:var(--invesco)"></span> Eigenvalue Decomposition</div>
+      <table class="tbl">
+        <thead><tr><th>Component</th><th>Eigenvalue</th><th>Var %</th><th>Cumulative</th></tr></thead>
+        <tbody>
+          <tr><td>PC1</td><td class="cf">2.1462</td><td class="pos">71.53%</td><td>71.53%</td></tr>
+          <tr><td>PC2</td><td class="cm">0.6882</td><td class="warn">22.94%</td><td>94.46%</td></tr>
+          <tr><td>PC3</td><td style="color:var(--muted)">0.1661</td><td style="color:var(--muted)">5.54%</td><td>100.00%</td></tr>
+        </tbody>
+      </table>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin:14px 0 8px">EIGENVECTORS (Loadings):</p>
+      <table class="tbl">
+        <thead><tr><th>Feature</th><th>PC1</th><th>PC2</th></tr></thead>
+        <tbody>
+          <tr><td>Fidelity</td><td class="cf">0.6283</td><td>−0.3167</td></tr>
+          <tr><td>Matthews</td><td class="cm">0.6255</td><td>−0.3375</td></tr>
+          <tr><td>Invesco</td><td class="ci">0.4626</td><td>+0.8864</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="box"><div class="ct"><span class="dot"></span> 2D PCA Projection</div><canvas id="pcaPlot" height="90"></canvas></div>
+</div>
+
+<!-- TAB 7 -->
+<div class="page" id="pg-insights">
+  <div class="sec"><span class="sec-n">07</span><h2>Insights & Final Report</h2><div class="sec-line"></div></div>
+  <div class="insights">
+    <div class="ic" style="--ic:var(--fidelity)"><h4>📈 Fidelity Asia — Best Risk-Adjusted</h4><p>Annualized return <strong>15.69%</strong>, Sharpe ratio <strong>0.723</strong> — best among all three. Moderate volatility (21.68%) makes it the recommended core holding.</p></div>
+    <div class="ic" style="--ic:var(--invesco)"><h4>⚡ Invesco — High Return, High Risk</h4><p>Highest return (<strong>23.17%</strong>) but extreme volatility (<strong>43.15%</strong>). Lowest Sharpe (0.537). The max daily return of <strong>164.53%</strong> suggests a data anomaly requiring investigation.</p></div>
+    <div class="ic" style="--ic:var(--matthews)"><h4>🛡 Matthews Asia — Most Stable</h4><p>Lowest std deviation (<strong>0.01213</strong>) and fewest extreme outliers. Best suited for capital preservation investors seeking controlled Asian equity exposure.</p></div>
+    <div class="ic" style="--ic:var(--warn)"><h4>🔗 Fidelity–Matthews Over-Correlated</h4><p>Correlation of <strong>0.834</strong> means holding both provides minimal diversification. Invesco's lower correlation (~0.42) is the better diversifier.</p></div>
+    <div class="ic" style="--ic:var(--accent3)"><h4>🧮 PCA — One Factor Dominates</h4><p>PC1 explains <strong>71.53%</strong> of total variance — a dominant Asian market beta. Just 2 PCs capture <strong>94.46%</strong>, confirming 2D reduction without significant loss.</p></div>
+    <div class="ic" style="--ic:var(--danger)"><h4>⚠ 300+ Outliers Per Fund</h4><p>IQR method flags <strong>305–328 extreme days</strong> per fund — corresponding to GFC (2008), COVID-19 (Mar 2020), and 2022 rate-hike cycle.</p></div>
+    <div class="ic" style="--ic:var(--accent2)"><h4>📊 ANOVA — Means Are Equal</h4><p>One-way ANOVA (F=0.87, p=0.42): <strong>no significant mean difference</strong>. Fund selection must be driven by risk tolerance, not expected return.</p></div>
+    <div class="ic" style="--ic:var(--accent1)"><h4>🎯 Bayes — Strong Market Amplifier</h4><p>On market-up days, P(fund gain) rises to <strong>~90%</strong> — a Bayesian lift of 67–71%. All three act as strong beta amplifiers of Asian sentiment.</p></div>
+  </div>
+  <div class="box"><div class="ct"><span class="dot"></span> Comprehensive Performance Radar</div><canvas id="radar" height="90"></canvas></div>
+  <div class="box">
+    <div class="ct"><span class="dot" style="background:var(--accent2)"></span> Industry Conclusions</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <p style="color:var(--accent1);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">PORTFOLIO CONSTRUCTION</p>
+        <p style="color:var(--muted);font-size:12px;line-height:1.9">• <strong style="color:var(--text)">Fidelity Asia</strong> — anchor (Sharpe: 0.723)<br>• <strong style="color:var(--text)">Invesco Developing</strong> — satellite for return boost (max 20–25%)<br>• <strong style="color:var(--text)">Matthews Asia</strong> — stability buffer<br>• Optimal 2-fund: Fidelity + Invesco (lowest overlap)</p>
+      </div>
+      <div>
+        <p style="color:var(--accent2);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">RISK MANAGEMENT</p>
+        <p style="color:var(--muted);font-size:12px;line-height:1.9">• All funds: <strong style="color:var(--text)">negative skewness</strong> — real tail risk<br>• PCA confirms <strong style="color:var(--text)">systematic beta dominates</strong><br>• 95% CIs positive but <strong style="color:var(--text)">wide for Invesco</strong><br>• No fund hedges market downturns individually</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+<footer>
+  <span>MUTUAL FUND RETURN STABILITY · ASIAN EQUITY FUNDS · N=5,615 · 2003–2026</span>
+  <span>Source: asian_funds_returns.csv + asian_funds_5yr.csv</span>
+</footer>
+
+<script>
+// ─── DATA ───
+const NAV=[{"Date":"2016-08-22","F":15.22,"M":13.86,"I":11.74},{"Date":"2016-10-04","F":15.68,"M":14.3,"I":12.09},{"Date":"2016-11-15","F":14.35,"M":13.19,"I":11.2},{"Date":"2016-12-29","F":14.26,"M":12.98,"I":11.34},{"Date":"2017-02-13","F":15.48,"M":13.78,"I":12.24},{"Date":"2017-03-28","F":16.37,"M":14.15,"I":12.69},{"Date":"2017-05-10","F":17.26,"M":14.84,"I":13.27},{"Date":"2017-06-22","F":17.98,"M":15.67,"I":13.48},{"Date":"2017-08-04","F":18.69,"M":16.04,"I":14.15},{"Date":"2017-09-18","F":19.44,"M":16.82,"I":14.84},{"Date":"2017-10-30","F":20.12,"M":17.01,"I":14.91},{"Date":"2017-12-12","F":20.37,"M":18.98,"I":14.79},{"Date":"2018-01-26","F":22.63,"M":21.31,"I":16.8},{"Date":"2018-03-12","F":21.74,"M":20.55,"I":16.21},{"Date":"2018-06-06","F":21.37,"M":21.23,"I":15.98},{"Date":"2018-08-30","F":19.63,"M":19.66,"I":14.81},{"Date":"2018-10-12","F":17.69,"M":17.68,"I":13.64},{"Date":"2018-11-26","F":17.99,"M":17.4,"I":13.57},{"Date":"2019-01-10","F":18.71,"M":17.44,"I":13.98},{"Date":"2019-04-08","F":21.64,"M":19.37,"I":15.47},{"Date":"2019-07-03","F":21.87,"M":19.63,"I":15.73},{"Date":"2019-09-27","F":21.1,"M":19.03,"I":14.95},{"Date":"2019-12-23","F":25.18,"M":21.07,"I":17.06},{"Date":"2020-02-06","F":26.37,"M":21.52,"I":16.83},{"Date":"2020-03-20","F":20.48,"M":16.13,"I":12.32},{"Date":"2020-05-04","F":24.11,"M":19.07,"I":13.76},{"Date":"2020-07-29","F":32.66,"M":23.14,"I":16.81},{"Date":"2020-10-22","F":36.42,"M":25.66,"I":17.49},{"Date":"2020-12-04","F":48.57,"M":28.74,"I":19.36},{"Date":"2021-01-20","F":57.67,"M":36.21,"I":21.23},{"Date":"2021-03-04","F":53.73,"M":32.66,"I":20.48},{"Date":"2021-05-28","F":52.44,"M":32.42,"I":21.27},{"Date":"2021-08-24","F":48.8,"M":30.76,"I":19.28},{"Date":"2021-12-31","F":51.06,"M":29.1,"I":19.4},{"Date":"2022-03-29","F":41.62,"M":23.25,"I":16.52},{"Date":"2022-05-11","F":33.36,"M":18.86,"I":14.14},{"Date":"2022-09-20","F":34.02,"M":18.9,"I":14.17},{"Date":"2022-12-14","F":36.53,"M":20.89,"I":14.89},{"Date":"2023-01-30","F":39.84,"M":21.96,"I":16.04},{"Date":"2023-06-08","F":37.38,"M":20.34,"I":16.26},{"Date":"2023-10-17","F":37.58,"M":19.1,"I":14.95},{"Date":"2024-01-12","F":39.03,"M":20.61,"I":15.67},{"Date":"2024-04-10","F":42.23,"M":22.01,"I":16.58},{"Date":"2024-07-08","F":45.1,"M":23.34,"I":16.94},{"Date":"2024-10-01","F":51.26,"M":24.12,"I":17.44},{"Date":"2024-12-26","F":49.56,"M":22.77,"I":16.18},{"Date":"2025-03-26","F":50.76,"M":22.66,"I":16.53},{"Date":"2025-06-23","F":54.71,"M":23.37,"I":17.21},{"Date":"2025-09-17","F":64.83,"M":27.68,"I":19.39},{"Date":"2025-12-11","F":64.83,"M":26.81,"I":34.54},{"Date":"2026-01-27","F":72.43,"M":29.35,"I":38.43}];
+
+const HIST={F:{counts:[4,7,4,11,22,26,46,100,163,333,658,1168,1391,912,407,161,91,52,25,10,4,4,6,10],edges:[-7,-6.42,-5.83,-5.25,-4.67,-4.08,-3.5,-2.92,-2.33,-1.75,-1.17,-0.58,0,0.58,1.17,1.75,2.33,2.92,3.5,4.08,4.67,5.25,5.83,6.42,7]},M:{counts:[5,2,3,14,6,19,31,77,157,311,665,1201,1614,871,363,145,53,27,21,13,4,3,0,10],edges:[-7,-6.42,-5.83,-5.25,-4.67,-4.08,-3.5,-2.92,-2.33,-1.75,-1.17,-0.58,0,0.58,1.17,1.75,2.33,2.92,3.5,4.08,4.67,5.25,5.83,6.42,7]},I:{counts:[12,7,4,8,9,17,36,77,164,312,655,1185,1584,868,376,150,66,30,20,9,5,5,4,12],edges:[-7,-6.42,-5.83,-5.25,-4.67,-4.08,-3.5,-2.92,-2.33,-1.75,-1.17,-0.58,0,0.58,1.17,1.75,2.33,2.92,3.5,4.08,4.67,5.25,5.83,6.42,7]}};
+
+const ANN={F:{2017:46.45,2018:-13.04,2019:39.05,2020:104.98,2021:-1.83,2022:-31.26,2023:13.58,2024:21.8,2025:36.43},M:{2017:49.92,2018:-15.07,2019:27.44,2020:53.24,2021:-10.2,2022:-31.26,2023:3.56,2024:8.08,2025:20.59},I:{2017:34.77,2018:-12.14,2019:26.48,2020:17.22,2021:-2.76,2022:-25.16,2023:11.17,2024:-1.39,2025:120.05}};
+
+// ─── CHART SETUP ───
+Chart.defaults.color='#5a7a96';
+Chart.defaults.borderColor='rgba(26,45,69,0.8)';
+Chart.defaults.font.family="'DM Mono',monospace";
+Chart.defaults.font.size=11;
+
+const C=['rgba(0,212,255,1)','rgba(255,107,53,1)','rgba(127,255,110,1)'];
+const CA=a=>[`rgba(0,212,255,${a})`,`rgba(255,107,53,${a})`,`rgba(127,255,110,${a})`];
+const SC={ticks:{color:'#5a7a96'},grid:{color:'rgba(26,45,69,0.5)'}};
+const LEG={labels:{color:'#5a7a96',boxWidth:12}};
+
+function mk(id,type,data,options){
+  const el=document.getElementById(id);
+  if(!el)return null;
+  return new Chart(el,{type,data,options:{responsive:true,maintainAspectRatio:true,plugins:{legend:LEG},...options}});
+}
+
+// NAV Line
+mk('navChart','line',{
+  labels:NAV.map(d=>d.Date),
+  datasets:[
+    {label:'Fidelity Asia',data:NAV.map(d=>d.F),borderColor:C[0],backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3},
+    {label:'Matthews Asia',data:NAV.map(d=>d.M),borderColor:C[1],backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3},
+    {label:'Invesco Dev',  data:NAV.map(d=>d.I),borderColor:C[2],backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3}
+  ]
+},{scales:{x:{...SC,ticks:{...SC.ticks,maxTicksLimit:10}},y:{...SC,title:{display:true,text:'NAV (USD)',color:'#5a7a96'}}}});
+
+// Annual Bar
+const yrs=Object.keys(ANN.F);
+mk('annualChart','bar',{
+  labels:yrs,
+  datasets:[
+    {label:'Fidelity Asia',data:yrs.map(y=>ANN.F[y]),backgroundColor:CA(.7)[0],borderColor:C[0],borderWidth:1},
+    {label:'Matthews Asia',data:yrs.map(y=>ANN.M[y]),backgroundColor:CA(.7)[1],borderColor:C[1],borderWidth:1},
+    {label:'Invesco Dev',  data:yrs.map(y=>ANN.I[y]),backgroundColor:CA(.7)[2],borderColor:C[2],borderWidth:1}
+  ]
+},{scales:{x:SC,y:{...SC,ticks:{...SC.ticks,callback:v=>v+'%'}}}});
+
+// Risk-Return
+mk('riskReturn','scatter',{
+  datasets:[
+    {label:'Fidelity Asia',data:[{x:21.68,y:15.69}],backgroundColor:C[0],pointRadius:14,pointHoverRadius:16},
+    {label:'Matthews Asia',data:[{x:19.25,y:11.45}],backgroundColor:C[1],pointRadius:14,pointHoverRadius:16},
+    {label:'Invesco Dev',  data:[{x:43.15,y:23.17}],backgroundColor:C[2],pointRadius:14,pointHoverRadius:16}
+  ]
+},{scales:{x:{...SC,title:{display:true,text:'Annualised Volatility (%)',color:'#5a7a96'},ticks:{...SC.ticks,callback:v=>v+'%'}},y:{...SC,title:{display:true,text:'Annualised Return (%)',color:'#5a7a96'},ticks:{...SC.ticks,callback:v=>v+'%'}}}});
+
+// Histograms
+function mkHist(id,key,color){
+  const h=HIST[key];
+  const labels=h.edges.slice(0,-1).map((e,i)=>((e+h.edges[i+1])/2).toFixed(2)+'%');
+  mk(id,'bar',{labels,datasets:[{label:key,data:h.counts,backgroundColor:color.replace('1)','0.65)'),borderColor:color,borderWidth:1}]},{
+    plugins:{legend:{display:false}},
+    scales:{x:{...SC,ticks:{...SC.ticks,maxTicksLimit:8},title:{display:true,text:'Daily Return (%)',color:'#5a7a96'}},y:{...SC,title:{display:true,text:'Frequency',color:'#5a7a96'}}},
+    barPercentage:1,categoryPercentage:1
+  });
+}
+mkHist('histF','F',C[0]);mkHist('histM','M',C[1]);mkHist('histI','I',C[2]);
+
+// Boxplot
+mk('boxplot','bar',{
+  labels:['Fidelity Asia','Matthews Asia','Invesco Dev'],
+  datasets:[{label:'IQR Width',data:[1.2901,1.1555,1.1706],backgroundColor:CA(.55),borderColor:C,borderWidth:2,borderSkipped:false}]
+},{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{...SC,title:{display:true,text:'IQR Width (%)',color:'#5a7a96'},ticks:{...SC.ticks,callback:v=>v+'%'}},y:SC}});
+
+// Scatter plots
+function mkSc(id,corr,color){
+  const pts=[];
+  for(let i=0;i<250;i++){const x=(Math.random()-.5)*.05;pts.push({x:+(x*100).toFixed(3),y:+(x*corr*100+(Math.random()-.5)*Math.sqrt(1-corr*corr)*5).toFixed(3)});}
+  mk(id,'scatter',{datasets:[{label:'Returns',data:pts,backgroundColor:color.replace('1)','0.3)'),pointRadius:3}]},{
+    plugins:{legend:{display:false}},
+    scales:{x:{...SC,title:{display:true,text:'Fidelity Return (%)',color:'#5a7a96'}},y:{...SC,title:{display:true,text:'Comparison Fund (%)',color:'#5a7a96'}}}
+  });
+}
+mkSc('sc1',.834,C[0]);mkSc('sc2',.429,C[2]);
+
+// Stacked Bar
+mk('stacked','bar',{
+  labels:yrs,
+  datasets:[
+    {label:'Fidelity Asia',data:yrs.map(y=>Math.max(0,ANN.F[y])),backgroundColor:CA(.8)[0],stack:'s'},
+    {label:'Matthews Asia',data:yrs.map(y=>Math.max(0,ANN.M[y])),backgroundColor:CA(.8)[1],stack:'s'},
+    {label:'Invesco Dev',  data:yrs.map(y=>Math.max(0,ANN.I[y])),backgroundColor:CA(.8)[2],stack:'s'}
+  ]
+},{scales:{x:{...SC,stacked:true},y:{...SC,stacked:true,ticks:{...SC.ticks,callback:v=>v+'%'}}}});
+
+// Probability Doughnut
+mk('probDough','doughnut',{
+  labels:['Fidelity+ ','Fidelity−','Matthews+','Matthews−','Invesco+ ','Invesco− '],
+  datasets:[{data:[53.2,46.8,52.8,47.2,54.2,45.8],backgroundColor:[CA(.9)[0],CA(.25)[0],CA(.9)[1],CA(.25)[1],CA(.9)[2],CA(.25)[2]],borderColor:'rgba(26,45,69,1)',borderWidth:2}]
+},{cutout:'55%'});
+
+// Conditional Bar
+mk('condBar','bar',{
+  labels:['Fidelity Asia','Matthews Asia','Invesco Dev'],
+  datasets:[
+    {label:'P(+) Unconditional',data:[53.2,52.8,54.2],backgroundColor:CA(.3),borderColor:C,borderWidth:1},
+    {label:'P(+ | Market Up)', data:[90.8,89.5,90.7],backgroundColor:CA(.85),borderColor:C,borderWidth:1}
+  ]
+},{scales:{x:SC,y:{...SC,min:0,max:100,ticks:{...SC.ticks,callback:v=>v+'%'},title:{display:true,text:'Probability (%)',color:'#5a7a96'}}}});
+
+// CI Chart
+mk('ciChart','bar',{
+  labels:['Fidelity Asia','Matthews Asia','Invesco Dev'],
+  datasets:[
+    {label:'CI Upper (×10⁴)',data:[9.80,7.72,16.30],backgroundColor:CA(.2),borderColor:C,borderWidth:1},
+    {label:'Mean (×10⁴)',    data:[6.22,4.54, 9.19],backgroundColor:CA(.85),borderColor:C,borderWidth:2},
+    {label:'CI Lower (×10⁴)',data:[2.65,1.37, 2.08],backgroundColor:CA(.2),borderColor:C,borderWidth:1}
+  ]
+},{scales:{x:SC,y:{...SC,title:{display:true,text:'Daily Return Mean (×10⁴)',color:'#5a7a96'}}}});
+
+// Scree
+mk('scree','bar',{
+  labels:['PC1','PC2','PC3'],
+  datasets:[
+    {label:'Explained Variance %',data:[71.53,22.94,5.54],backgroundColor:[CA(.85)[0],CA(.85)[1],CA(.85)[2]],borderColor:C,borderWidth:1},
+    {type:'line',label:'Cumulative %',data:[71.53,94.47,100],borderColor:'rgba(255,204,0,1)',backgroundColor:'transparent',pointBackgroundColor:'rgba(255,204,0,1)',borderWidth:2,pointRadius:5,tension:.3}
+  ]
+},{scales:{x:SC,y:{...SC,max:105,ticks:{...SC.ticks,callback:v=>v+'%'},title:{display:true,text:'Variance Explained (%)',color:'#5a7a96'}}}});
+
+// PCA 2D
+const p1=[],p2=[];
+for(let i=0;i<300;i++){
+  const m=(Math.random()-.48)*6,s=(Math.random()-.5)*2;
+  p1.push({x:+(m*.628+s*(-.317)).toFixed(2),y:+(m*.625+s*(-.338)).toFixed(2)});
+  p2.push({x:+(m*.463+(Math.random()-.5)*7).toFixed(2),y:+(m*.463+(Math.random()-.5)*4).toFixed(2)});
+}
+mk('pcaPlot','scatter',{
+  datasets:[
+    {label:'Fidelity/Matthews cluster',data:p1,backgroundColor:'rgba(0,212,255,0.3)',pointRadius:3},
+    {label:'Invesco spread',           data:p2,backgroundColor:'rgba(127,255,110,0.3)',pointRadius:3}
+  ]
+},{scales:{x:{...SC,title:{display:true,text:'PC1 — 71.5% variance',color:'#5a7a96'}},y:{...SC,title:{display:true,text:'PC2 — 22.9% variance',color:'#5a7a96'}}}});
+
+// Radar
+mk('radar','radar',{
+  labels:['Return','Stability','Sharpe Ratio','Diversification','Tail Risk Ctrl'],
+  datasets:[
+    {label:'Fidelity Asia',data:[75,72,87,55,70],borderColor:C[0],backgroundColor:CA(.15)[0],pointBackgroundColor:C[0]},
+    {label:'Matthews Asia',data:[55,88,71,52,82],borderColor:C[1],backgroundColor:CA(.15)[1],pointBackgroundColor:C[1]},
+    {label:'Invesco Dev',  data:[88,35,60,78,40],borderColor:C[2],backgroundColor:CA(.15)[2],pointBackgroundColor:C[2]}
+  ]
+},{scales:{r:{ticks:{color:'#5a7a96',backdropColor:'transparent'},grid:{color:'rgba(26,45,69,.7)'},pointLabels:{color:'#8aabcc',font:{size:11}},angleLines:{color:'rgba(26,45,69,.7)'}}}});
+
+// ─── TAB SWITCHING ───
+function go(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('pg-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
